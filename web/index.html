@@ -275,6 +275,25 @@
     border:2px solid var(--paper-line);
   }
   .reeks-links{ display:flex; align-items:center; gap:12px; }
+  .oefenvorm-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .oefenvorm-rij{
+    background:var(--wit);
+    border-radius:14px;
+    padding:12px 14px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    border:2px solid var(--paper-line);
+    cursor:pointer;
+    font-weight:700;
+    font-size:13.5px;
+  }
+  .oefenvorm-rij input[type=checkbox]{ width:18px; height:18px; accent-color:var(--kaft); cursor:pointer; flex-shrink:0; }
   .reeks-nummer{
     width:38px;height:38px;
     border-radius:10px;
@@ -498,6 +517,8 @@ let voortgang = {
 let route = { naam: 'home' };
 let sessie = null; // actieve oefensessie
 let laatsteUploadMelding = null;
+let laatsteAutoImportMelding = null;
+let instellingen = { oefenvormen: { mc:true, flashcard:true, typNl:true, typFr:false } };
 
 const KLEUREN_COVERS = ['#1F4B3F','#2F5D8A','#8A4B2F','#5C3D8A','#2F708A','#8A2F5C'];
 
@@ -506,6 +527,7 @@ const KLEUREN_COVERS = ['#1F4B3F','#2F5D8A','#8A4B2F','#5C3D8A','#2F708A','#8A2F
    ook blijft staan na herladen of afsluiten, ook zonder internet. */
 const OPSLAG_SLEUTEL_WOORDEN = 'frans-flitsen:woordenlijst';
 const OPSLAG_SLEUTEL_VOORTGANG = 'frans-flitsen:voortgang';
+const OPSLAG_SLEUTEL_INSTELLINGEN = 'frans-flitsen:instellingen';
 
 function laadAlles(){
   try{
@@ -516,6 +538,13 @@ function laadAlles(){
     const v = localStorage.getItem(OPSLAG_SLEUTEL_VOORTGANG);
     if(v) voortgang = JSON.parse(v);
   }catch(e){ /* nog niets opgeslagen */ }
+  try{
+    const s = localStorage.getItem(OPSLAG_SLEUTEL_INSTELLINGEN);
+    if(s){
+      const parsed = JSON.parse(s);
+      instellingen.oefenvormen = Object.assign({}, instellingen.oefenvormen, parsed.oefenvormen);
+    }
+  }catch(e){ /* nog niets opgeslagen */ }
   render();
 }
 function bewaarWoordenlijst(){
@@ -525,6 +554,15 @@ function bewaarWoordenlijst(){
 function bewaarVoortgang(){
   try{ localStorage.setItem(OPSLAG_SLEUTEL_VOORTGANG, JSON.stringify(voortgang)); }
   catch(e){ console.error('Opslaan voortgang mislukt', e); }
+}
+function bewaarInstellingen(){
+  try{ localStorage.setItem(OPSLAG_SLEUTEL_INSTELLINGEN, JSON.stringify(instellingen)); }
+  catch(e){ console.error('Opslaan instellingen mislukt', e); }
+}
+function wisselOefenvorm(sleutel){
+  instellingen.oefenvormen[sleutel] = !instellingen.oefenvormen[sleutel];
+  bewaarInstellingen();
+  render();
 }
 
 /* ====================== HELPERS ====================== */
@@ -588,6 +626,7 @@ function verwerkCsv(tekst){
   }
   const rijen = resultaat.data;
   let aantalNieuw = 0;
+  let aantalOvergeslagen = 0;
   let aantalHoofdstukken = new Set();
   const vereist = ['hoofdstuk','reeks','frans','nederlands'];
   if(rijen.length===0) return { ok:false, bericht:'Het bestand bevat geen rijen.' };
@@ -612,11 +651,15 @@ function verwerkCsv(tekst){
     } else {
       aantalHoofdstukken.add(id);
     }
-    woordenlijst.hoofdstukken[id].reeksen[reeks].push({ fr, nl });
+    const doel = woordenlijst.hoofdstukken[id].reeksen[reeks];
+    const bestaatAl = doel.some(w=> normaliseer(w.fr)===normaliseer(fr) && normaliseer(w.nl)===normaliseer(nl));
+    if(bestaatAl){ aantalOvergeslagen++; return; }
+    doel.push({ fr, nl });
     aantalNieuw++;
   });
+  if(aantalNieuw===0 && aantalOvergeslagen>0) return { ok:true, bericht:'Alle woorden waren al aanwezig, niets toegevoegd.', aantalNieuw:0 };
   if(aantalNieuw===0) return { ok:false, bericht:'Geen geldige rijen gevonden. Controleer de kolomnamen en of reeks 1, 2 of 3 is.' };
-  return { ok:true, bericht:`${aantalNieuw} woorden toegevoegd in ${aantalHoofdstukken.size} schrift(en).` };
+  return { ok:true, bericht:`${aantalNieuw} woorden toegevoegd in ${aantalHoofdstukken.size} schrift(en).`, aantalNieuw };
 }
 
 const VOORBEELD_CSV = `hoofdstuk,reeks,frans,nederlands
@@ -653,6 +696,31 @@ function csvBestandGekozen(input){
   reader.readAsText(file);
 }
 
+async function autoImporteerWoordenlijsten(){
+  try{
+    const resIndex = await fetch('woordenlijsten/index.json');
+    if(!resIndex.ok) return;
+    const bestanden = await resIndex.json();
+    if(!Array.isArray(bestanden) || bestanden.length===0) return;
+
+    let totaalNieuw = 0;
+    for(const naam of bestanden){
+      try{
+        const resCsv = await fetch('woordenlijsten/' + naam);
+        if(!resCsv.ok) continue;
+        const tekst = await resCsv.text();
+        const resultaat = verwerkCsv(tekst);
+        if(resultaat.ok && resultaat.aantalNieuw) totaalNieuw += resultaat.aantalNieuw;
+      }catch(e){ /* dit bestand overslaan, doorgaan met de rest */ }
+    }
+    if(totaalNieuw > 0){
+      bewaarWoordenlijst();
+      laatsteAutoImportMelding = { aantal: totaalNieuw };
+      render();
+    }
+  }catch(e){ /* geen internet, geen index.json of ongeldige data: stil negeren */ }
+}
+
 /* ====================== NAVIGATIE ====================== */
 function gaNaar(naam, data){
   route = Object.assign({ naam }, data||{});
@@ -663,14 +731,21 @@ function gaNaar(naam, data){
 /* ====================== OEFENSESSIE ====================== */
 function startSessie(hId, reeksNr){
   const hoofdstuk = woordenlijst.hoofdstukken[hId];
-  const woorden = hoofdstuk.reeksen[reeksNr];
   const pool = [];
   [1,2,3].forEach(r=> hoofdstuk.reeksen[r].forEach(w=>pool.push(w)) );
+  const woorden = reeksNr==='gemengd' ? schud(pool).slice(0,30) : hoofdstuk.reeksen[reeksNr];
 
-  const types = ['flashcard','mc','typ'];
+  const typePool = [];
+  if(instellingen.oefenvormen.mc) typePool.push({type:'mc', richtingVast:null});
+  if(instellingen.oefenvormen.flashcard) typePool.push({type:'flashcard', richtingVast:null});
+  if(instellingen.oefenvormen.typNl) typePool.push({type:'typ', richtingVast:'fr-nl'});
+  if(instellingen.oefenvormen.typFr) typePool.push({type:'typ', richtingVast:'nl-fr'});
+  if(typePool.length===0) return;
+
   const vragen = schud(woorden).map(w=>{
-    const type = types[Math.floor(Math.random()*types.length)];
-    const richting = Math.random()<0.5 ? 'fr-nl' : 'nl-fr';
+    const gekozen = typePool[Math.floor(Math.random()*typePool.length)];
+    const type = gekozen.type;
+    const richting = gekozen.richtingVast || (Math.random()<0.5 ? 'fr-nl' : 'nl-fr');
     let opties = null;
     if(type==='mc'){
       const correct = richting==='fr-nl' ? w.nl : w.fr;
@@ -811,10 +886,16 @@ function renderHome(){
       </button>`;
     }).join('') + `</div>`;
   }
+  let autoImportHtml = '';
+  if(laatsteAutoImportMelding){
+    autoImportHtml = `<div class="melding ok">✅ ${laatsteAutoImportMelding.aantal} nieuwe woorden automatisch geladen.</div>`;
+    laatsteAutoImportMelding = null;
+  }
   return `
   ${renderTopbar('Franse Flitsen')}
   <div class="content">
     <div class="section-title">Mijn schriften</div>
+    ${autoImportHtml}
     ${schriftenHtml}
   </div>
   ${lijst.length>0 ? `<div class="fab" onclick="gaNaar('upload')">＋</div>` : ''}
@@ -825,10 +906,22 @@ function renderHome(){
 function renderHoofdstuk(){
   const h = woordenlijst.hoofdstukken[route.hId];
   if(!h) return renderHome();
+  const ov = instellingen.oefenvormen;
+  const oefenvormenActief = Object.values(ov).some(Boolean);
+  const oefenvormenHtml = `
+    <div class="section-title">Oefenvormen</div>
+    <div class="oefenvorm-grid">
+      <label class="oefenvorm-rij"><input type="checkbox" ${ov.mc?'checked':''} onchange="wisselOefenvorm('mc')"><span>Meerkeuze</span></label>
+      <label class="oefenvorm-rij"><input type="checkbox" ${ov.flashcard?'checked':''} onchange="wisselOefenvorm('flashcard')"><span>Flashcards</span></label>
+      <label class="oefenvorm-rij"><input type="checkbox" ${ov.typNl?'checked':''} onchange="wisselOefenvorm('typNl')"><span>Typen (Nederlands)</span></label>
+      <label class="oefenvorm-rij"><input type="checkbox" ${ov.typFr?'checked':''} onchange="wisselOefenvorm('typFr')"><span>Typen (Frans)</span></label>
+    </div>
+    ${!oefenvormenActief ? `<div class="melding err">⚠️ Kies minstens één oefenvorm om te kunnen starten.</div>` : ''}
+  `;
   const rijen = [1,2,3].map(r=>{
     const woorden = h.reeksen[r];
     const vr = voortgangReeks(route.hId, r);
-    const magStarten = woorden.length>0;
+    const magStarten = woorden.length>0 && oefenvormenActief;
     return `
     <div class="reeks-rij">
       <div class="reeks-links">
@@ -845,11 +938,31 @@ function renderHoofdstuk(){
     </div>`;
   }).join('');
 
+  const totaalWoorden = [1,2,3].reduce((s,r)=>s+h.reeksen[r].length,0);
+  const vrGemengd = voortgangReeks(route.hId, 'gemengd');
+  const magStartenGemengd = totaalWoorden>0 && oefenvormenActief;
+  const gemengdeRijHtml = `
+    <div class="reeks-rij" style="margin-top:16px;">
+      <div class="reeks-links">
+        <div class="reeks-nummer">🔀</div>
+        <div>
+          <div class="reeks-naam">Gemengde reeks</div>
+          <div class="reeks-sub">${Math.min(30,totaalWoorden)} woorden uit alle reeksen${vrGemengd.laatsteScore?` · laatste score ${vrGemengd.laatsteScore}%`:''}</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="sterren">${[1,2,3].map(n=>`<span style="color:${n<=vrGemengd.sterren?'var(--goud)':'var(--paper-line)'}">${iconSter(true)}</span>`).join('')}</div>
+        ${magStartenGemengd ? `<button class="btn btn-primary" style="padding:9px 14px; font-size:13.5px;" onclick="startSessie('${route.hId}','gemengd')">Start</button>` : ''}
+      </div>
+    </div>`;
+
   return `
   ${renderTopbar(h.naam, "gaNaar('home')")}
   <div class="content">
+    ${oefenvormenHtml}
     <div class="section-title">Kies een reeks</div>
     ${rijen}
+    ${gemengdeRijHtml}
   </div>`;
 }
 
@@ -1016,6 +1129,7 @@ function render(){
 }
 
 laadAlles();
+autoImporteerWoordenlijsten();
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{

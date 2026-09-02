@@ -5,8 +5,8 @@ Progressive Web App om Franse woordjes te oefenen, gericht op het niveau van het
 ## Concept
 
 - Elk **hoofdstuk** ("schrift") bevat Frans/Nederlandse woordparen, onderverdeeld in **3 reeksen**.
-- De gebruiker importeert woordenlijsten zelf via een CSV-bestand — geen backend nodig.
-- Oefenvormen per sessie, willekeurig gemixt: meerkeuze, typen, flashcards.
+- De gebruiker importeert woordenlijsten zelf via een CSV-bestand, of ze worden automatisch ingelezen uit de `woordenlijsten/`-folder bij het opstarten — geen backend nodig.
+- Oefenvormen per sessie, willekeurig gemixt uit de types die de gebruiker heeft aangevinkt: meerkeuze, typen (Nederlands en/of Frans apart instelbaar), flashcards.
 - Gamification in Duolingo-stijl: XP per goed antwoord, streakbonus, dagstreak (🔥), niveaus, 1-3 sterren per reeks op basis van score.
 - Alle data (woordenlijsten + voortgang) wordt lokaal opgeslagen via `localStorage` — blijft bewaard na herladen, werkt offline.
 
@@ -23,6 +23,8 @@ Nog **niet** geïmplementeerd (zie Roadmap): cloud-opslag/sync over meerdere toe
 ├── index.html          # volledige app: HTML + CSS + JS (vanilla JS, geen framework)
 ├── manifest.json        # PWA-manifest (naam, iconen, themakleur, standalone display)
 ├── service-worker.js    # cache-first offline-ondersteuning van de app shell
+├── woordenlijsten/       # CSV-bestanden die automatisch ingelezen worden bij opstart
+│   └── index.json       # lijstje bestandsnamen die ingelezen moeten worden
 └── icons/
     ├── icon-192.png
     ├── icon-512.png
@@ -48,11 +50,21 @@ Hoofdstuk 1 - Op school,2,la chaise,de stoel
 - `reeks`: moet `1`, `2` of `3` zijn.
 - `frans` / `nederlands`: de woordparen.
 
-Import gebeurt via PapaParse (CDN, `cdnjs.cloudflare.com/.../papaparse.min.js`) in `verwerkCsv()` in `index.html`. Nieuwe imports **vullen aan** op bestaande hoofdstukken (geen overschrijven/dedup op woordniveau — dat is een aandachtspunt bij herhaalde imports, zie Bekende beperkingen).
+Import gebeurt via PapaParse (CDN, `cdnjs.cloudflare.com/.../papaparse.min.js`) in `verwerkCsv()` in `index.html`. Nieuwe imports **vullen aan** op bestaande hoofdstukken; woorden die (op fr+nl na trim/lowercase) al in dezelfde reeks staan, worden overgeslagen — herhaalde imports (manueel of automatisch) verdubbelen dus niet.
+
+### Automatische import uit een folder
+
+Bestanden in `web/woordenlijsten/` worden bij elke opstart automatisch ingelezen (`autoImporteerWoordenlijsten()` in `index.html`), zonder dat de gebruiker iets moet uploaden. Omdat de app geen backend heeft en de browser een folder niet zelf kan "listen", houdt `web/woordenlijsten/index.json` een lijstje bestandsnamen bij:
+
+```json
+["hoofdstuk1.csv", "hoofdstuk2.csv"]
+```
+
+Om een nieuwe woordenlijst automatisch te laten inladen: zet het CSV-bestand in `web/woordenlijsten/` en voeg de bestandsnaam toe aan `index.json`. Elk bestand wordt via dezelfde `verwerkCsv()`-logica en dedup verwerkt als een manuele upload.
 
 ## Opslagstructuur (localStorage)
 
-Twee sleutels:
+Drie sleutels:
 
 - `frans-flitsen:woordenlijst` →
   ```
@@ -66,6 +78,11 @@ Twee sleutels:
     hoofdstukken: { [id]: { reeksen: { 1:{sterren,laatsteScore}, ... } } }
   }
   ```
+- `frans-flitsen:instellingen` →
+  ```
+  { oefenvormen: { mc: boolean, flashcard: boolean, typNl: boolean, typFr: boolean } }
+  ```
+  Bepaalt welke oefenvormen meegenomen worden bij het opbouwen van een sessie (`startSessie()`); instelbaar via het blok "Oefenvormen" boven "Kies een reeks". Standaard staan meerkeuze, flashcards en typen (Nederlands) aan, typen (Frans) uit.
 
 ## Design system
 
@@ -91,12 +108,12 @@ Twee sleutels:
 - [ ] Cloud-opslag zodat voortgang meegaat over meerdere toestellen (bv. Firebase Firestore of Supabase, anonieme device-id of simpele login).
 - [ ] "Moeilijke woorden"-modus: woorden die vaak fout beantwoord worden vaker herhalen (spaced repetition-achtig).
 - [ ] Geluidseffecten en kleine animatie bij goed/fout antwoord.
-- [ ] Dedup bij CSV-herimport (nu kunnen woorden dubbel terechtkomen als je 2x dezelfde lijst importeert).
 - [ ] Beheerscherm om woorden te verwijderen/bewerken zonder herimport.
 - [ ] Eventueel: native wrapper via Capacitor voor een installeerbare .apk buiten de browser om.
 
 ## Bekende beperkingen
 
 - Geen accountsysteem — voortgang is gebonden aan browser + toestel.
-- Geen validatie tegen dubbele woorden bij herhaalde CSV-import.
+- Dedup bij CSV-import werkt enkel op exacte fr+nl-overeenkomst (na trim + lowercase); een aangepaste vertaling van een al bestaand woord wordt niet automatisch bijgewerkt, enkel genegeerd als "al aanwezig" of als extra rij toegevoegd.
 - Typen wordt exact vergeleken (na trim + lowercase) — geen tolerantie voor accenten/tikfouten.
+- Automatische import (`woordenlijsten/index.json`) vereist dat het bestand via http(s) geserveerd wordt; werkt niet bij lokaal openen via `file://`.
