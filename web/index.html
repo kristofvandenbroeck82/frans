@@ -475,23 +475,6 @@
   .melding.ok{ background:#E7F5EA; color:var(--succes); }
   .melding.err{ background:#FBEAEA; color:var(--rood); }
 
-  .fab{
-    position:fixed;
-    bottom:24px;
-    right:calc(50% - 260px + 24px);
-    width:56px;height:56px;
-    border-radius:50%;
-    background:var(--kaft);
-    color:var(--wit);
-    font-size:26px;
-    display:flex;align-items:center;justify-content:center;
-    box-shadow:0 4px 12px rgba(0,0,0,0.25);
-    z-index:5;
-  }
-  @media (max-width:560px){
-    .fab{ right:24px; }
-  }
-
   .link-onder{
     display:block;
     text-align:center;
@@ -550,6 +533,12 @@ function laadAlles(){
 function bewaarWoordenlijst(){
   try{ localStorage.setItem(OPSLAG_SLEUTEL_WOORDEN, JSON.stringify(woordenlijst)); }
   catch(e){ console.error('Opslaan woordenlijst mislukt', e); alert('Opslaan is mislukt. Is er genoeg opslagruimte vrij?'); }
+}
+function wisWoordenlijst(){
+  woordenlijst = { hoofdstukken: {} };
+  bewaarWoordenlijst();
+  laatsteUploadMelding = { ok:true, bericht:'Alle lokaal opgeslagen woordenlijsten gewist. Je voortgang (XP, streak, sterren) blijft behouden.' };
+  render();
 }
 function bewaarVoortgang(){
   try{ localStorage.setItem(OPSLAG_SLEUTEL_VOORTGANG, JSON.stringify(voortgang)); }
@@ -846,7 +835,7 @@ function renderTopbar(titel, terugActie){
         <span style="font-size:22px;">✏️</span>
         <h1>${titel}</h1>
       </div>
-      ${route.naam==='home' ? `<button class="icon-btn" onclick="gaNaar('upload')">＋</button>` : ''}
+      ${route.naam==='home' ? `<button class="icon-btn" onclick="gaNaar('upload')">⚙️</button>` : ''}
     </div>
     ${route.naam==='home' ? `
     <div class="stats">
@@ -868,7 +857,7 @@ function renderHome(){
     schriftenHtml = `
     <div class="empty-state">
       <h3>Nog geen schriften</h3>
-      <p>Voeg je eerste woordenlijst toe via het ＋ knopje bovenaan. Je kan een CSV-bestand uploaden met Franse en Nederlandse woorden.</p>
+      <p>Voeg je eerste woordenlijst toe via het ⚙️ knopje bovenaan. Je kan een CSV-bestand uploaden met Franse en Nederlandse woorden.</p>
       <button class="btn btn-blauw" style="margin-top:10px;" onclick="gaNaar('upload')">Woordenlijst toevoegen</button>
     </div>`;
   } else {
@@ -898,7 +887,6 @@ function renderHome(){
     ${autoImportHtml}
     ${schriftenHtml}
   </div>
-  ${lijst.length>0 ? `<div class="fab" onclick="gaNaar('upload')">＋</div>` : ''}
   `;
 }
 
@@ -994,6 +982,7 @@ function renderUpload(){
       Elke rij is één woord. Woorden met dezelfde hoofdstuk-naam komen automatisch in hetzelfde schrift.
     </div>
     <button class="link-onder" onclick="downloadVoorbeeld()">Voorbeeldbestand downloaden</button>
+    <button class="btn btn-ghost btn-wide" style="margin-top:18px;" onclick="if(confirm('Alle lokaal opgeslagen woordenlijsten wissen? Dit kan niet ongedaan gemaakt worden. Je voortgang (XP, streak, sterren) blijft behouden.')) wisWoordenlijst()">🗑️ Woordenlijst-cache wissen</button>
   </div>`;
 }
 
