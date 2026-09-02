@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1F4B3F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fr. Flitsen">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Franse Flitsen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --paper:#FBF6EA;
+    --paper-line:#E7DFC9;
+    --kaft:#1F4B3F;
+    --kaft-dark:#153A30;
+    --rood:#D64545;
+    --blauw:#2F5D8A;
+    --goud:#E8A93B;
+    --goud-dark:#C4881F;
+    --succes:#4C9A5D;
+    --tekst:#2A2620;
+    --tekst-zacht:#6B6455;
+    --wit:#FFFDF8;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    background-image:
+      linear-gradient(var(--paper-line) 1px, transparent 1px);
+    background-size: 100% 32px;
+    color:var(--tekst);
+    font-family:'Nunito', sans-serif;
+    min-height:100vh;
+  }
+  h1,h2,h3,.font-kop{
+    font-family:'Baloo 2', sans-serif;
+    margin:0;
+  }
+  button{
+    font-family:'Nunito', sans-serif;
+    cursor:pointer;
+    border:none;
+  }
+  input{
+    font-family:'Nunito', sans-serif;
+  }
+  #app{
+    max-width:520px;
+    margin:0 auto;
+    min-height:100vh;
+    background:var(--paper);
+    box-shadow:0 0 40px rgba(0,0,0,0.08);
+    padding-bottom:40px;
+    position:relative;
+  }
+
+  /* ---------- Topbar ---------- */
+  .topbar{
+    background:var(--kaft);
+    color:var(--wit);
+    padding:18px 20px 22px;
+    border-radius:0 0 22px 22px;
+    position:relative;
+    overflow:hidden;
+  }
+  .topbar::after{
+    content:"";
+    position:absolute;
+    right:-30px;top:-30px;
+    width:120px;height:120px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.05);
+  }
+  .topbar-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    position:relative;
+    z-index:1;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .brand h1{
+    font-size:22px;
+    font-weight:700;
+    letter-spacing:0.2px;
+  }
+  .stats{
+    display:flex;
+    gap:14px;
+    margin-top:14px;
+    position:relative;
+    z-index:1;
+  }
+  .stat-pill{
+    background:rgba(255,255,255,0.12);
+    border-radius:14px;
+    padding:8px 12px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-weight:700;
+    font-size:14px;
+  }
+  .lvl-bar-wrap{
+    margin-top:12px;
+    position:relative;
+    z-index:1;
+  }
+  .lvl-bar-track{
+    background:rgba(255,255,255,0.15);
+    border-radius:8px;
+    height:8px;
+    overflow:hidden;
+  }
+  .lvl-bar-fill{
+    height:100%;
+    background:var(--goud);
+    border-radius:8px;
+    transition:width .4s ease;
+  }
+  .lvl-label{
+    font-size:11px;
+    opacity:0.85;
+    margin-top:5px;
+    font-weight:600;
+  }
+
+  /* ---------- Content ---------- */
+  .content{
+    padding:20px;
+  }
+  .section-title{
+    font-size:15px;
+    color:var(--tekst-zacht);
+    font-weight:700;
+    margin:22px 0 12px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .empty-state{
+    background:var(--wit);
+    border:2px dashed var(--paper-line);
+    border-radius:16px;
+    padding:28px 20px;
+    text-align:center;
+    color:var(--tekst-zacht);
+  }
+  .empty-state h3{
+    color:var(--tekst);
+    margin-bottom:8px;
+    font-size:18px;
+  }
+
+  /* ---------- Notebook cards (hoofdstukken) ---------- */
+  .schrift-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+  }
+  .schrift-card{
+    position:relative;
+    border-radius:12px;
+    padding:16px 14px 14px 22px;
+    min-height:118px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    color:var(--wit);
+    text-align:left;
+    box-shadow:0 3px 0 rgba(0,0,0,0.15);
+  }
+  .schrift-card::before{
+    content:"";
+    position:absolute;
+    left:8px;top:10px;bottom:10px;
+    width:3px;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.55) 0px,
+      rgba(255,255,255,0.55) 5px,
+      transparent 5px,
+      transparent 10px
+    );
+    border-radius:2px;
+  }
+  .schrift-naam{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:15px;
+    line-height:1.25;
+  }
+  .schrift-meta{
+    font-size:12px;
+    font-weight:700;
+    opacity:0.9;
+    display:flex;
+    align-items:center;
+    gap:5px;
+  }
+  .schrift-badge{
+    position:absolute;
+    top:-6px; right:-6px;
+    background:var(--goud);
+    color:var(--kaft-dark);
+    border-radius:50%;
+    width:26px;height:26px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;
+    box-shadow:0 2px 0 rgba(0,0,0,0.2);
+  }
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:13px 20px;
+    border-radius:14px;
+    font-weight:700;
+    font-size:15px;
+    box-shadow:0 3px 0 rgba(0,0,0,0.18);
+    transition:transform .05s ease;
+  }
+  .btn:active{ transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,0.18);}
+  .btn-primary{ background:var(--succes); color:var(--wit); }
+  .btn-blauw{ background:var(--blauw); color:var(--wit); }
+  .btn-goud{ background:var(--goud); color:var(--kaft-dark); }
+  .btn-ghost{ background:transparent; color:var(--kaft); box-shadow:none; border:2px solid var(--paper-line); }
+  .btn-wide{ width:100%; }
+  .icon-btn{
+    background:rgba(255,255,255,0.14);
+    color:var(--wit);
+    border-radius:12px;
+    width:38px;height:38px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;
+  }
+
+  /* ---------- Terug knop ---------- */
+  .terugknop{
+    background:none;
+    color:var(--wit);
+    font-weight:700;
+    font-size:14px;
+    display:flex;
+    align-items:center;
+    gap:4px;
+    padding:4px 0 10px;
+  }
+
+  /* ---------- Reeksrijen ---------- */
+  .reeks-rij{
+    background:var(--wit);
+    border-radius:14px;
+    padding:14px 16px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:10px;
+    border:2px solid var(--paper-line);
+  }
+  .reeks-links{ display:flex; align-items:center; gap:12px; }
+  .reeks-nummer{
+    width:38px;height:38px;
+    border-radius:10px;
+    background:var(--paper);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    color:var(--kaft);
+    font-size:16px;
+    flex-shrink:0;
+  }
+  .reeks-naam{ font-weight:700; font-size:14.5px; }
+  .reeks-sub{ font-size:12px; color:var(--tekst-zacht); font-weight:600; margin-top:2px;}
+  .sterren{ display:flex; gap:2px; font-size:14px; }
+
+  /* ---------- Oefenscherm ---------- */
+  .voortgangsdots{
+    display:flex;
+    gap:5px;
+    margin:14px 0 6px;
+  }
+  .dot{
+    flex:1;
+    height:7px;
+    border-radius:4px;
+    background:rgba(255,255,255,0.2);
+  }
+  .dot.done{ background:var(--goud); }
+  .dot.current{ background:var(--wit); }
+
+  .oefen-kop{
+    text-align:center;
+    font-size:13px;
+    font-weight:700;
+    color:var(--tekst-zacht);
+    text-transform:none;
+    margin:20px 0 6px;
+  }
+  .oefen-woord{
+    text-align:center;
+    font-family:'Baloo 2', sans-serif;
+    font-size:34px;
+    font-weight:700;
+    color:var(--kaft);
+    margin:6px 0 24px;
+    word-break:break-word;
+  }
+
+  .opties{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .optie{
+    background:var(--wit);
+    border:2px solid var(--paper-line);
+    border-radius:14px;
+    padding:15px 16px;
+    font-weight:700;
+    font-size:15.5px;
+    text-align:left;
+    color:var(--tekst);
+  }
+  .optie.correct{ background:#E7F5EA; border-color:var(--succes); color:var(--succes); }
+  .optie.fout{ background:#FBEAEA; border-color:var(--rood); color:var(--rood); }
+
+  .typ-invoer{
+    width:100%;
+    padding:16px;
+    border-radius:14px;
+    border:2px solid var(--paper-line);
+    font-size:17px;
+    font-weight:700;
+    text-align:center;
+    background:var(--wit);
+    color:var(--tekst);
+  }
+  .typ-invoer:focus{ outline:none; border-color:var(--blauw); }
+  .typ-invoer.correct{ border-color:var(--succes); background:#E7F5EA; color:var(--succes);}
+  .typ-invoer.fout{ border-color:var(--rood); background:#FBEAEA; color:var(--rood);}
+
+  .flashcard{
+    background:var(--wit);
+    border:2px solid var(--paper-line);
+    border-radius:18px;
+    padding:40px 20px;
+    text-align:center;
+    min-height:130px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Baloo 2', sans-serif;
+    font-size:24px;
+    font-weight:700;
+    color:var(--kaft);
+    margin-bottom:16px;
+  }
+  .flashcard.omgedraaid{ background:#EFF5FB; color:var(--blauw); border-color:var(--blauw); }
+
+  .feedback-balk{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    max-width:520px;
+    margin:0 auto;
+    padding:18px 20px 24px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    border-radius:20px 20px 0 0;
+  }
+  .feedback-balk.correct{ background:#DCF2E1; }
+  .feedback-balk.fout{ background:#FADCDC; }
+  .feedback-tekst{ font-family:'Baloo 2', sans-serif; font-weight:700; font-size:17px; }
+  .feedback-tekst.correct{ color:var(--succes); }
+  .feedback-tekst.fout{ color:var(--rood); }
+  .feedback-sub{ font-size:12.5px; font-weight:600; color:var(--tekst-zacht); margin-top:2px;}
+
+  /* ---------- Resultaatscherm ---------- */
+  .resultaat-wrap{
+    text-align:center;
+    padding:30px 10px;
+  }
+  .resultaat-sterren{
+    font-size:42px;
+    letter-spacing:6px;
+    margin:14px 0 6px;
+  }
+  .resultaat-cijfer{
+    font-family:'Baloo 2', sans-serif;
+    font-size:40px;
+    font-weight:700;
+    color:var(--kaft);
+  }
+  .xp-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:#FCEFD3;
+    color:var(--goud-dark);
+    font-weight:800;
+    padding:8px 16px;
+    border-radius:20px;
+    margin-top:14px;
+    font-size:15px;
+  }
+
+  /* ---------- Upload scherm ---------- */
+  .upload-box{
+    border:2.5px dashed var(--blauw);
+    border-radius:16px;
+    padding:26px 18px;
+    text-align:center;
+    background:#F3F8FC;
+  }
+  .veld-uitleg{
+    background:var(--wit);
+    border-radius:14px;
+    padding:16px;
+    font-size:13.5px;
+    color:var(--tekst-zacht);
+    line-height:1.55;
+    margin-top:16px;
+    border:2px solid var(--paper-line);
+  }
+  .veld-uitleg code{
+    background:var(--paper);
+    padding:1px 5px;
+    border-radius:5px;
+    font-size:12.5px;
+  }
+  .melding{
+    margin-top:14px;
+    padding:12px 14px;
+    border-radius:12px;
+    font-size:13.5px;
+    font-weight:700;
+  }
+  .melding.ok{ background:#E7F5EA; color:var(--succes); }
+  .melding.err{ background:#FBEAEA; color:var(--rood); }
+
+  .fab{
+    position:fixed;
+    bottom:24px;
+    right:calc(50% - 260px + 24px);
+    width:56px;height:56px;
+    border-radius:50%;
+    background:var(--kaft);
+    color:var(--wit);
+    font-size:26px;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 12px rgba(0,0,0,0.25);
+    z-index:5;
+  }
+  @media (max-width:560px){
+    .fab{ right:24px; }
+  }
+
+  .link-onder{
+    display:block;
+    text-align:center;
+    margin-top:16px;
+    color:var(--tekst-zacht);
+    font-weight:700;
+    font-size:13px;
+    text-decoration:underline;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ====================== STATE ====================== */
+let woordenlijst = { hoofdstukken: {} };   // { [id]: {naam, volgorde, reeksen:{1:[{fr,nl}],2:[],3:[]}} }
+let voortgang = {
+  xpTotaal: 0,
+  streak: { dagen: 0, laatsteDatum: null },
+  hoofdstukken: {} // { [id]: { reeksen: { 1:{sterren,laatsteScore}, 2:{}, 3:{} } } }
+};
+let route = { naam: 'home' };
+let sessie = null; // actieve oefensessie
+let laatsteUploadMelding = null;
+
+const KLEUREN_COVERS = ['#1F4B3F','#2F5D8A','#8A4B2F','#5C3D8A','#2F708A','#8A2F5C'];
+
+/* ====================== OPSLAG ======================
+   Alles wordt lokaal in de browser bewaard (localStorage), zodat het
+   ook blijft staan na herladen of afsluiten, ook zonder internet. */
+const OPSLAG_SLEUTEL_WOORDEN = 'frans-flitsen:woordenlijst';
+const OPSLAG_SLEUTEL_VOORTGANG = 'frans-flitsen:voortgang';
+
+function laadAlles(){
+  try{
+    const w = localStorage.getItem(OPSLAG_SLEUTEL_WOORDEN);
+    if(w) woordenlijst = JSON.parse(w);
+  }catch(e){ /* nog niets opgeslagen of ongeldige data */ }
+  try{
+    const v = localStorage.getItem(OPSLAG_SLEUTEL_VOORTGANG);
+    if(v) voortgang = JSON.parse(v);
+  }catch(e){ /* nog niets opgeslagen */ }
+  render();
+}
+function bewaarWoordenlijst(){
+  try{ localStorage.setItem(OPSLAG_SLEUTEL_WOORDEN, JSON.stringify(woordenlijst)); }
+  catch(e){ console.error('Opslaan woordenlijst mislukt', e); alert('Opslaan is mislukt. Is er genoeg opslagruimte vrij?'); }
+}
+function bewaarVoortgang(){
+  try{ localStorage.setItem(OPSLAG_SLEUTEL_VOORTGANG, JSON.stringify(voortgang)); }
+  catch(e){ console.error('Opslaan voortgang mislukt', e); }
+}
+
+/* ====================== HELPERS ====================== */
+function slug(tekst){
+  return tekst.toLowerCase().trim()
+    .replace(/[^a-z0-9\u00e0-\u00ff\s-]/g,'')
+    .replace(/\s+/g,'-');
+}
+function schud(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function normaliseer(tekst){
+  return tekst.toLowerCase().trim().replace(/\s+/g,' ');
+}
+function hoofdstukLijst(){
+  return Object.entries(woordenlijst.hoofdstukken)
+    .sort((a,b)=>(a[1].volgorde||0)-(b[1].volgorde||0));
+}
+function voortgangHoofdstuk(id){
+  if(!voortgang.hoofdstukken[id]) voortgang.hoofdstukken[id] = { reeksen:{} };
+  return voortgang.hoofdstukken[id];
+}
+function voortgangReeks(hId, reeksNr){
+  const h = voortgangHoofdstuk(hId);
+  if(!h.reeksen[reeksNr]) h.reeksen[reeksNr] = { sterren:0, laatsteScore:0 };
+  return h.reeksen[reeksNr];
+}
+function niveauInfo(){
+  const xp = voortgang.xpTotaal;
+  const niveau = Math.floor(xp/100)+1;
+  const inNiveau = xp % 100;
+  return { niveau, inNiveau, procent: inNiveau };
+}
+function vandaagStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+}
+function werkStreakBij(){
+  const vandaag = vandaagStr();
+  if(voortgang.streak.laatsteDatum === vandaag) return; // al geoefend vandaag
+  const gisteren = new Date(); gisteren.setDate(gisteren.getDate()-1);
+  const gisterenStr = gisteren.getFullYear()+'-'+(gisteren.getMonth()+1)+'-'+gisteren.getDate();
+  if(voortgang.streak.laatsteDatum === gisterenStr){
+    voortgang.streak.dagen += 1;
+  } else {
+    voortgang.streak.dagen = 1;
+  }
+  voortgang.streak.laatsteDatum = vandaag;
+}
+
+/* ====================== CSV IMPORT ====================== */
+function verwerkCsv(tekst){
+  const resultaat = Papa.parse(tekst, { header:true, skipEmptyLines:true });
+  if(resultaat.errors && resultaat.errors.length){
+    return { ok:false, bericht:'Kon het bestand niet lezen. Controleer of het een geldig CSV-bestand is.' };
+  }
+  const rijen = resultaat.data;
+  let aantalNieuw = 0;
+  let aantalHoofdstukken = new Set();
+  const vereist = ['hoofdstuk','reeks','frans','nederlands'];
+  if(rijen.length===0) return { ok:false, bericht:'Het bestand bevat geen rijen.' };
+  const kolommen = Object.keys(rijen[0]).map(k=>k.trim().toLowerCase());
+  for(const v of vereist){
+    if(!kolommen.includes(v)) return { ok:false, bericht:`Kolom "${v}" ontbreekt. Verwacht: hoofdstuk, reeks, frans, nederlands.` };
+  }
+  rijen.forEach(rij=>{
+    const naam = (rij.hoofdstuk||rij.Hoofdstuk||'').trim();
+    const reeks = parseInt(rij.reeks||rij.Reeks, 10);
+    const fr = (rij.frans||rij.Frans||'').trim();
+    const nl = (rij.nederlands||rij.Nederlands||'').trim();
+    if(!naam || !fr || !nl || ![1,2,3].includes(reeks)) return;
+    const id = slug(naam);
+    if(!woordenlijst.hoofdstukken[id]){
+      woordenlijst.hoofdstukken[id] = {
+        naam,
+        volgorde: Object.keys(woordenlijst.hoofdstukken).length,
+        reeksen: {1:[],2:[],3:[]}
+      };
+      aantalHoofdstukken.add(id);
+    } else {
+      aantalHoofdstukken.add(id);
+    }
+    woordenlijst.hoofdstukken[id].reeksen[reeks].push({ fr, nl });
+    aantalNieuw++;
+  });
+  if(aantalNieuw===0) return { ok:false, bericht:'Geen geldige rijen gevonden. Controleer de kolomnamen en of reeks 1, 2 of 3 is.' };
+  return { ok:true, bericht:`${aantalNieuw} woorden toegevoegd in ${aantalHoofdstukken.size} schrift(en).` };
+}
+
+const VOORBEELD_CSV = `hoofdstuk,reeks,frans,nederlands
+Hoofdstuk 1 - Op school,1,le stylo,de pen
+Hoofdstuk 1 - Op school,1,le cahier,het schrift
+Hoofdstuk 1 - Op school,1,la table,de tafel
+Hoofdstuk 1 - Op school,2,la chaise,de stoel
+Hoofdstuk 1 - Op school,2,le tableau,het bord
+Hoofdstuk 1 - Op school,2,la porte,de deur
+Hoofdstuk 1 - Op school,3,le livre,het boek
+Hoofdstuk 1 - Op school,3,la fenetre,het raam
+Hoofdstuk 1 - Op school,3,le sac,de boekentas
+`;
+
+function downloadVoorbeeld(){
+  const blob = new Blob([VOORBEELD_CSV], { type:'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'voorbeeld-woordenlijst.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function csvBestandGekozen(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    const res = verwerkCsv(e.target.result);
+    laatsteUploadMelding = res;
+    if(res.ok) await bewaarWoordenlijst();
+    render();
+  };
+  reader.readAsText(file);
+}
+
+/* ====================== NAVIGATIE ====================== */
+function gaNaar(naam, data){
+  route = Object.assign({ naam }, data||{});
+  window.scrollTo(0,0);
+  render();
+}
+
+/* ====================== OEFENSESSIE ====================== */
+function startSessie(hId, reeksNr){
+  const hoofdstuk = woordenlijst.hoofdstukken[hId];
+  const woorden = hoofdstuk.reeksen[reeksNr];
+  const pool = [];
+  [1,2,3].forEach(r=> hoofdstuk.reeksen[r].forEach(w=>pool.push(w)) );
+
+  const types = ['flashcard','mc','typ'];
+  const vragen = schud(woorden).map(w=>{
+    const type = types[Math.floor(Math.random()*types.length)];
+    const richting = Math.random()<0.5 ? 'fr-nl' : 'nl-fr';
+    let opties = null;
+    if(type==='mc'){
+      const correct = richting==='fr-nl' ? w.nl : w.fr;
+      const andere = pool.filter(x=>x!==w).map(x=> richting==='fr-nl'? x.nl : x.fr);
+      const gekozenAndere = schud([...new Set(andere)]).slice(0,3);
+      opties = schud([correct, ...gekozenAndere]);
+    }
+    return { woord:w, type, richting, opties, status:null, antwoord:'' };
+  });
+
+  sessie = {
+    hId, reeksNr,
+    vragen,
+    index: 0,
+    goedeStreak: 0,
+    aantalGoed: 0,
+    xpVerdiend: 0,
+    wachtOpVolgende: false
+  };
+  gaNaar('oefening');
+}
+
+function huidigeVraag(){ return sessie.vragen[sessie.index]; }
+
+function beantwoordMc(gekozenTekst){
+  const v = huidigeVraag();
+  if(v.status) return;
+  const correct = v.richting==='fr-nl' ? v.woord.nl : v.woord.fr;
+  v.antwoord = gekozenTekst;
+  verwerkAntwoord(normaliseer(gekozenTekst)===normaliseer(correct));
+}
+function beantwoordTyp(){
+  const v = huidigeVraag();
+  if(v.status) return;
+  const input = document.getElementById('typ-veld');
+  const waarde = input ? input.value : '';
+  const correct = v.richting==='fr-nl' ? v.woord.nl : v.woord.fr;
+  v.antwoord = waarde;
+  verwerkAntwoord(normaliseer(waarde)===normaliseer(correct) && waarde.trim()!=='');
+}
+function flashcardOordeel(wistHet){
+  const v = huidigeVraag();
+  if(v.status) return;
+  verwerkAntwoord(wistHet);
+}
+function verwerkAntwoord(isCorrect){
+  const v = huidigeVraag();
+  v.status = isCorrect ? 'correct' : 'fout';
+  if(isCorrect){
+    sessie.aantalGoed++;
+    sessie.goedeStreak++;
+    let xp = 10;
+    if(sessie.goedeStreak>0 && sessie.goedeStreak % 3 === 0) xp += 5;
+    sessie.xpVerdiend += xp;
+    v.xp = xp;
+  } else {
+    sessie.goedeStreak = 0;
+    v.xp = 0;
+  }
+  render();
+}
+function volgendeVraag(){
+  if(sessie.index < sessie.vragen.length-1){
+    sessie.index++;
+    render();
+  } else {
+    eindeSessie();
+  }
+}
+async function eindeSessie(){
+  const totaal = sessie.vragen.length;
+  const pct = totaal? sessie.aantalGoed/totaal : 0;
+  let sterren = 0;
+  if(pct>=0.9) sterren=3; else if(pct>=0.7) sterren=2; else if(pct>=0.5) sterren=1;
+
+  const r = voortgangReeks(sessie.hId, sessie.reeksNr);
+  r.sterren = Math.max(r.sterren, sterren);
+  r.laatsteScore = Math.round(pct*100);
+
+  voortgang.xpTotaal += sessie.xpVerdiend;
+  werkStreakBij();
+  await bewaarVoortgang();
+
+  gaNaar('resultaat', { sterren, pct: Math.round(pct*100), xp: sessie.xpVerdiend });
+}
+
+/* ====================== RENDER: BOUWBLOKKEN ====================== */
+function iconVlam(){ return '🔥'; }
+function iconSter(gevuld){ return gevuld ? '★' : '☆'; }
+
+function renderTopbar(titel, terugActie){
+  const info = niveauInfo();
+  return `
+  <div class="topbar">
+    ${terugActie ? `<button class="terugknop" onclick="${terugActie}">‹ Terug</button>` : ''}
+    <div class="topbar-row">
+      <div class="brand">
+        <span style="font-size:22px;">✏️</span>
+        <h1>${titel}</h1>
+      </div>
+      ${route.naam==='home' ? `<button class="icon-btn" onclick="gaNaar('upload')">＋</button>` : ''}
+    </div>
+    ${route.naam==='home' ? `
+    <div class="stats">
+      <div class="stat-pill">⭐ ${voortgang.xpTotaal} XP</div>
+      <div class="stat-pill">${iconVlam()} ${voortgang.streak.dagen} dag${voortgang.streak.dagen===1?'':'en'}</div>
+    </div>
+    <div class="lvl-bar-wrap">
+      <div class="lvl-bar-track"><div class="lvl-bar-fill" style="width:${info.procent}%"></div></div>
+      <div class="lvl-label">Niveau ${info.niveau} · nog ${100-info.inNiveau} XP tot niveau ${info.niveau+1}</div>
+    </div>` : ''}
+  </div>`;
+}
+
+/* ---------- HOME ---------- */
+function renderHome(){
+  const lijst = hoofdstukLijst();
+  let schriftenHtml = '';
+  if(lijst.length===0){
+    schriftenHtml = `
+    <div class="empty-state">
+      <h3>Nog geen schriften</h3>
+      <p>Voeg je eerste woordenlijst toe via het ＋ knopje bovenaan. Je kan een CSV-bestand uploaden met Franse en Nederlandse woorden.</p>
+      <button class="btn btn-blauw" style="margin-top:10px;" onclick="gaNaar('upload')">Woordenlijst toevoegen</button>
+    </div>`;
+  } else {
+    schriftenHtml = `<div class="schrift-grid">` + lijst.map(([id,h],i)=>{
+      const kleur = KLEUREN_COVERS[i % KLEUREN_COVERS.length];
+      const vh = voortgangHoofdstuk(id);
+      const totaalSterren = [1,2,3].reduce((s,r)=> s + (vh.reeksen[r]?vh.reeksen[r].sterren:0), 0);
+      const compleet = totaalSterren===9;
+      const aantalWoorden = [1,2,3].reduce((s,r)=>s+h.reeksen[r].length,0);
+      return `
+      <button class="schrift-card" style="background:${kleur};" onclick="gaNaar('hoofdstuk',{hId:'${id}'})">
+        ${compleet? `<div class="schrift-badge">🏅</div>`:''}
+        <div class="schrift-naam">${h.naam}</div>
+        <div class="schrift-meta">📖 ${aantalWoorden} woorden</div>
+      </button>`;
+    }).join('') + `</div>`;
+  }
+  return `
+  ${renderTopbar('Franse Flitsen')}
+  <div class="content">
+    <div class="section-title">Mijn schriften</div>
+    ${schriftenHtml}
+  </div>
+  ${lijst.length>0 ? `<div class="fab" onclick="gaNaar('upload')">＋</div>` : ''}
+  `;
+}
+
+/* ---------- HOOFDSTUK ---------- */
+function renderHoofdstuk(){
+  const h = woordenlijst.hoofdstukken[route.hId];
+  if(!h) return renderHome();
+  const rijen = [1,2,3].map(r=>{
+    const woorden = h.reeksen[r];
+    const vr = voortgangReeks(route.hId, r);
+    const magStarten = woorden.length>0;
+    return `
+    <div class="reeks-rij">
+      <div class="reeks-links">
+        <div class="reeks-nummer">${r}</div>
+        <div>
+          <div class="reeks-naam">Reeks ${r}</div>
+          <div class="reeks-sub">${woorden.length} woorden${vr.laatsteScore?` · laatste score ${vr.laatsteScore}%`:''}</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="sterren">${[1,2,3].map(n=>`<span style="color:${n<=vr.sterren?'var(--goud)':'var(--paper-line)'}">${iconSter(true)}</span>`).join('')}</div>
+        ${magStarten ? `<button class="btn btn-primary" style="padding:9px 14px; font-size:13.5px;" onclick="startSessie('${route.hId}',${r})">Start</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+  ${renderTopbar(h.naam, "gaNaar('home')")}
+  <div class="content">
+    <div class="section-title">Kies een reeks</div>
+    ${rijen}
+  </div>`;
+}
+
+/* ---------- UPLOAD ---------- */
+function renderUpload(){
+  let meldingHtml = '';
+  if(laatsteUploadMelding){
+    meldingHtml = `<div class="melding ${laatsteUploadMelding.ok?'ok':'err'}">${laatsteUploadMelding.ok?'✅':'⚠️'} ${laatsteUploadMelding.bericht}</div>`;
+  }
+  return `
+  ${renderTopbar('Woordenlijst toevoegen', "gaNaar('home')")}
+  <div class="content">
+    <div class="upload-box">
+      <div style="font-size:34px; margin-bottom:8px;">📄</div>
+      <div style="font-weight:800; margin-bottom:4px;">Upload een CSV-bestand</div>
+      <div style="font-size:13px; color:var(--tekst-zacht); margin-bottom:16px;">Nieuwe hoofdstukken worden aangemaakt, bestaande worden aangevuld.</div>
+      <label class="btn btn-blauw btn-wide" style="cursor:pointer;">
+        Bestand kiezen
+        <input type="file" accept=".csv" style="display:none;" onchange="csvBestandGekozen(this)">
+      </label>
+    </div>
+    ${meldingHtml}
+    <div class="veld-uitleg">
+      <strong>Verwachte kolommen (in Excel of Google Sheets, opslaan als .csv):</strong><br><br>
+      <code>hoofdstuk</code> — naam van het schrift, bv. "Hoofdstuk 1 - Op school"<br>
+      <code>reeks</code> — 1, 2 of 3<br>
+      <code>frans</code> — het Franse woord<br>
+      <code>nederlands</code> — de Nederlandse vertaling<br><br>
+      Elke rij is één woord. Woorden met dezelfde hoofdstuk-naam komen automatisch in hetzelfde schrift.
+    </div>
+    <button class="link-onder" onclick="downloadVoorbeeld()">Voorbeeldbestand downloaden</button>
+  </div>`;
+}
+
+/* ---------- OEFENING ---------- */
+function renderOefening(){
+  const v = huidigeVraag();
+  const dots = sessie.vragen.map((q,i)=>{
+    let cls = 'dot';
+    if(i<sessie.index) cls += ' done';
+    if(i===sessie.index) cls += ' current';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+
+  const vraagWoord = v.richting==='fr-nl' ? v.woord.fr : v.woord.nl;
+  const vraagTaal = v.richting==='fr-nl' ? 'Frans' : 'Nederlands';
+  const antwTaal = v.richting==='fr-nl' ? 'Nederlands' : 'Frans';
+
+  let kernHtml = '';
+  if(v.type==='mc'){
+    kernHtml = `
+    <div class="oefen-kop">Wat betekent dit in het ${antwTaal.toLowerCase()}?</div>
+    <div class="oefen-woord">${vraagWoord}</div>
+    <div class="opties">
+      ${v.opties.map(o=>{
+        let cls='optie';
+        if(v.status){
+          const correct = v.richting==='fr-nl'?v.woord.nl:v.woord.fr;
+          if(normaliseer(o)===normaliseer(correct)) cls+=' correct';
+          else if(o===v.antwoord) cls+=' fout';
+        }
+        return `<button class="${cls}" ${v.status?'disabled':''} onclick="beantwoordMc(${JSON.stringify(o)})">${o}</button>`;
+      }).join('')}
+    </div>`;
+  } else if(v.type==='typ'){
+    let inputCls = 'typ-invoer';
+    if(v.status==='correct') inputCls+=' correct';
+    if(v.status==='fout') inputCls+=' fout';
+    kernHtml = `
+    <div class="oefen-kop">Typ de vertaling in het ${antwTaal.toLowerCase()}</div>
+    <div class="oefen-woord">${vraagWoord}</div>
+    <input id="typ-veld" class="${inputCls}" ${v.status?'disabled':''} value="${v.status?v.antwoord.replace(/"/g,'&quot;'):''}" placeholder="Typ hier..." autocomplete="off" autocapitalize="off">
+    ${!v.status ? `<button class="btn btn-blauw btn-wide" style="margin-top:12px;" onclick="beantwoordTyp()">Controleer</button>` : ''}
+    ${v.status==='fout' ? `<div style="text-align:center; margin-top:10px; font-weight:700; color:var(--succes);">Juiste antwoord: ${v.richting==='fr-nl'?v.woord.nl:v.woord.fr}</div>` : ''}
+    `;
+  } else if(v.type==='flashcard'){
+    const omgedraaid = v.omgedraaid;
+    kernHtml = `
+    <div class="oefen-kop">Ken jij dit woord al?</div>
+    <div class="flashcard ${omgedraaid?'omgedraaid':''}" onclick="draaiFlashcard()">
+      ${omgedraaid ? (v.richting==='fr-nl'?v.woord.nl:v.woord.fr) : vraagWoord}
+    </div>
+    ${!v.status ? (omgedraaid ? `
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-ghost" style="flex:1;" onclick="flashcardOordeel(false)">Nog niet gekend</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="flashcardOordeel(true)">Ik wist het!</button>
+      </div>
+    ` : `<button class="btn btn-blauw btn-wide" onclick="draaiFlashcard()">Draai om</button>`) : ''}
+    `;
+  }
+
+  let feedbackHtml = '';
+  if(v.status){
+    const isCorrect = v.status==='correct';
+    feedbackHtml = `
+    <div class="feedback-balk ${v.status}">
+      <div>
+        <div class="feedback-tekst ${v.status}">${isCorrect?'Goed zo! 🎉':'Bijna! 💪'}</div>
+        <div class="feedback-sub">${isCorrect? '+'+v.xp+' XP verdiend' : 'Volgende keer beter'}</div>
+      </div>
+      <button class="btn ${isCorrect?'btn-primary':'btn-blauw'}" onclick="volgendeVraag()">Verder</button>
+    </div>`;
+  }
+
+  return `
+  <div class="topbar">
+    <button class="terugknop" onclick="if(confirm('Oefening stoppen? Je voortgang van deze sessie gaat verloren.')) gaNaar('hoofdstuk',{hId:sessie.hId})">✕ Stoppen</button>
+    <div class="voortgangsdots">${dots}</div>
+  </div>
+  <div class="content">
+    ${kernHtml}
+  </div>
+  ${feedbackHtml}
+  `;
+}
+function draaiFlashcard(){
+  const v = huidigeVraag();
+  v.omgedraaid = !v.omgedraaid;
+  render();
+}
+
+/* ---------- RESULTAAT ---------- */
+function renderResultaat(){
+  const sterrenHtml = [1,2,3].map(n=>`<span style="color:${n<=route.sterren?'var(--goud)':'var(--paper-line)'}">${iconSter(true)}</span>`).join('');
+  return `
+  ${renderTopbar('Sessie voltooid')}
+  <div class="content">
+    <div class="resultaat-wrap">
+      <div style="font-size:48px;">${route.sterren===3?'🏆':route.sterren>=1?'🎉':'📚'}</div>
+      <div class="resultaat-sterren">${sterrenHtml}</div>
+      <div class="resultaat-cijfer">${route.pct}% juist</div>
+      <div class="xp-chip">⭐ +${route.xp} XP</div>
+      <div style="margin-top:26px; display:flex; flex-direction:column; gap:10px;">
+        <button class="btn btn-primary btn-wide" onclick="startSessie(sessie.hId, sessie.reeksNr)">Reeks opnieuw oefenen</button>
+        <button class="btn btn-ghost btn-wide" onclick="gaNaar('hoofdstuk',{hId:sessie.hId})">Terug naar schrift</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ====================== RENDER ROOT ====================== */
+function render(){
+  const app = document.getElementById('app');
+  let html = '';
+  if(route.naam==='home') html = renderHome();
+  else if(route.naam==='hoofdstuk') html = renderHoofdstuk();
+  else if(route.naam==='upload') html = renderUpload();
+  else if(route.naam==='oefening') html = renderOefening();
+  else if(route.naam==='resultaat') html = renderResultaat();
+  else html = renderHome();
+  app.innerHTML = html;
+
+  if(route.naam==='oefening'){
+    const v = huidigeVraag();
+    if(v && v.type==='typ' && !v.status){
+      const el = document.getElementById('typ-veld');
+      if(el){
+        el.focus();
+        el.onkeydown = (e)=>{ if(e.key==='Enter') beantwoordTyp(); };
+      }
+    }
+  }
+}
+
+laadAlles();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(e=>console.warn('Service worker registratie mislukt', e));
+  });
+}
+</script>
+</body>
+</html>
