@@ -911,7 +911,8 @@ function renderOefening(){
           if(normaliseer(o)===normaliseer(correct)) cls+=' correct';
           else if(o===v.antwoord) cls+=' fout';
         }
-        return `<button class="${cls}" ${v.status?'disabled':''} onclick="beantwoordMc(${JSON.stringify(o)})">${o}</button>`;
+        const attrVeilig = JSON.stringify(o).replace(/"/g,'&quot;');
+        return `<button class="${cls}" ${v.status?'disabled':''} onclick="beantwoordMc(${attrVeilig})">${o}</button>`;
       }).join('')}
     </div>`;
   } else if(v.type==='typ'){
