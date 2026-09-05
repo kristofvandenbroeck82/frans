@@ -80,9 +80,11 @@ Drie sleutels:
   ```
 - `frans-flitsen:instellingen` →
   ```
-  { oefenvormen: { mc: boolean, flashcard: boolean, typNl: boolean, typFr: boolean } }
+  { oefenvormen: { mc: boolean, flashcard: boolean, typNl: boolean, typFr: boolean }, gemengdReeksen: { 1: boolean, 2: boolean, 3: boolean } }
   ```
-  Bepaalt welke oefenvormen meegenomen worden bij het opbouwen van een sessie (`startSessie()`); instelbaar via het blok "Oefenvormen" boven "Kies een reeks". Standaard staan meerkeuze, flashcards en typen (Nederlands) aan, typen (Frans) uit.
+  `oefenvormen` bepaalt welke oefenvormen meegenomen worden bij het opbouwen van een sessie (`startSessie()`); instelbaar via het blok "Oefenvormen" boven "Kies een reeks". Standaard staan meerkeuze, flashcards en typen (Nederlands) aan, typen (Frans) uit.
+
+  `gemengdReeksen` bepaalt welke reeksen (1/2/3) meetellen voor de "Gemengde reeks"-optie (30 willekeurige woorden uit de gekozen reeksen); instelbaar via de reeks-vinkjes op datzelfde blok. Standaard staan alle 3 reeksen aan.
 
 ## Design system
 

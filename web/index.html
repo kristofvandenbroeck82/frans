@@ -294,6 +294,20 @@
     font-size:13.5px;
   }
   .oefenvorm-rij input[type=checkbox]{ width:18px; height:18px; accent-color:var(--kaft); cursor:pointer; flex-shrink:0; }
+  .reeks-check-rij{ display:flex; gap:8px; margin-top:10px; }
+  .reeks-check-pill{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    padding:5px 10px;
+    border-radius:20px;
+    border:2px solid var(--paper-line);
+    background:var(--paper);
+    font-size:12.5px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .reeks-check-pill input[type=checkbox]{ width:14px; height:14px; accent-color:var(--kaft); cursor:pointer; }
   .reeks-nummer{
     width:38px;height:38px;
     border-radius:10px;
@@ -501,7 +515,7 @@ let route = { naam: 'home' };
 let sessie = null; // actieve oefensessie
 let laatsteUploadMelding = null;
 let laatsteAutoImportMelding = null;
-let instellingen = { oefenvormen: { mc:true, flashcard:true, typNl:true, typFr:false } };
+let instellingen = { oefenvormen: { mc:true, flashcard:true, typNl:true, typFr:false }, gemengdReeksen: { 1:true, 2:true, 3:true } };
 
 const KLEUREN_COVERS = ['#1F4B3F','#2F5D8A','#8A4B2F','#5C3D8A','#2F708A','#8A2F5C'];
 
@@ -526,6 +540,7 @@ function laadAlles(){
     if(s){
       const parsed = JSON.parse(s);
       instellingen.oefenvormen = Object.assign({}, instellingen.oefenvormen, parsed.oefenvormen);
+      instellingen.gemengdReeksen = Object.assign({}, instellingen.gemengdReeksen, parsed.gemengdReeksen);
     }
   }catch(e){ /* nog niets opgeslagen */ }
   render();
@@ -553,6 +568,11 @@ function wisselOefenvorm(sleutel){
   bewaarInstellingen();
   render();
 }
+function wisselGemengdReeks(r){
+  instellingen.gemengdReeksen[r] = !instellingen.gemengdReeksen[r];
+  bewaarInstellingen();
+  render();
+}
 
 /* ====================== HELPERS ====================== */
 function slug(tekst){
@@ -569,7 +589,10 @@ function schud(arr){
   return a;
 }
 function normaliseer(tekst){
-  return tekst.toLowerCase().trim().replace(/\s+/g,' ');
+  return tekst
+    .toLowerCase()
+    .normalize('NFD').replace(/\p{M}/gu, '')
+    .replace(/[^\p{L}\p{N}]/gu, '');
 }
 function hoofdstukLijst(){
   return Object.entries(woordenlijst.hoofdstukken)
@@ -722,7 +745,9 @@ function startSessie(hId, reeksNr){
   const hoofdstuk = woordenlijst.hoofdstukken[hId];
   const pool = [];
   [1,2,3].forEach(r=> hoofdstuk.reeksen[r].forEach(w=>pool.push(w)) );
-  const woorden = reeksNr==='gemengd' ? schud(pool).slice(0,30) : hoofdstuk.reeksen[reeksNr];
+  const gemengdPool = [];
+  [1,2,3].forEach(r=> { if(instellingen.gemengdReeksen[r]) hoofdstuk.reeksen[r].forEach(w=>gemengdPool.push(w)); });
+  const woorden = reeksNr==='gemengd' ? schud(gemengdPool).slice(0,30) : hoofdstuk.reeksen[reeksNr];
 
   const typePool = [];
   if(instellingen.oefenvormen.mc) typePool.push({type:'mc', richtingVast:null});
@@ -926,22 +951,30 @@ function renderHoofdstuk(){
     </div>`;
   }).join('');
 
-  const totaalWoorden = [1,2,3].reduce((s,r)=>s+h.reeksen[r].length,0);
+  const gr = instellingen.gemengdReeksen;
+  const gemengdReeksenActief = Object.values(gr).some(Boolean);
+  const totaalWoordenGemengd = [1,2,3].reduce((s,r)=> s + (gr[r] ? h.reeksen[r].length : 0), 0);
   const vrGemengd = voortgangReeks(route.hId, 'gemengd');
-  const magStartenGemengd = totaalWoorden>0 && oefenvormenActief;
+  const magStartenGemengd = totaalWoordenGemengd>0 && oefenvormenActief;
   const gemengdeRijHtml = `
-    <div class="reeks-rij" style="margin-top:16px;">
-      <div class="reeks-links">
-        <div class="reeks-nummer">🔀</div>
-        <div>
-          <div class="reeks-naam">Gemengde reeks</div>
-          <div class="reeks-sub">${Math.min(30,totaalWoorden)} woorden uit alle reeksen${vrGemengd.laatsteScore?` · laatste score ${vrGemengd.laatsteScore}%`:''}</div>
+    <div class="reeks-rij" style="margin-top:16px; flex-direction:column; align-items:stretch; gap:10px;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div class="reeks-links">
+          <div class="reeks-nummer">🔀</div>
+          <div>
+            <div class="reeks-naam">Gemengde reeks</div>
+            <div class="reeks-sub">${Math.min(30,totaalWoordenGemengd)} woorden uit gekozen reeksen${vrGemengd.laatsteScore?` · laatste score ${vrGemengd.laatsteScore}%`:''}</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="sterren">${[1,2,3].map(n=>`<span style="color:${n<=vrGemengd.sterren?'var(--goud)':'var(--paper-line)'}">${iconSter(true)}</span>`).join('')}</div>
+          ${magStartenGemengd ? `<button class="btn btn-primary" style="padding:9px 14px; font-size:13.5px;" onclick="startSessie('${route.hId}','gemengd')">Start</button>` : ''}
         </div>
       </div>
-      <div style="display:flex; align-items:center; gap:10px;">
-        <div class="sterren">${[1,2,3].map(n=>`<span style="color:${n<=vrGemengd.sterren?'var(--goud)':'var(--paper-line)'}">${iconSter(true)}</span>`).join('')}</div>
-        ${magStartenGemengd ? `<button class="btn btn-primary" style="padding:9px 14px; font-size:13.5px;" onclick="startSessie('${route.hId}','gemengd')">Start</button>` : ''}
+      <div class="reeks-check-rij">
+        ${[1,2,3].map(r=>`<label class="reeks-check-pill"><input type="checkbox" ${gr[r]?'checked':''} onchange="wisselGemengdReeks(${r})">Reeks ${r}</label>`).join('')}
       </div>
+      ${!gemengdReeksenActief ? `<div class="melding err">⚠️ Kies minstens één reeks voor de gemengde oefening.</div>` : ''}
     </div>`;
 
   return `
